@@ -1,6 +1,5 @@
 #pragma once
 #include <Arduino.h>
-#include <NightmareNetwork.h>
 #define ZMPT101B_SENSITIVITY 673.625
 #ifdef ESP32_C3
 #define ZMPT101B_PIN 3
@@ -17,8 +16,7 @@
 /// runs effectively back-to-back at ~100% duty on its core.
 #define SAMPLE_PERIOD_MS 5
 
-/// Sampling task. The stack has to cover the onLightStateChange callback, which in this project
-/// builds a JSON document and publishes over MQTT.
+/// Sampling task. The stack has to cover the onLightStateChange callback, if one is registered.
 #define LIGHT_TASK_STACK 4096
 /// Above the Arduino loop task (priority 1), far below the WiFi stack (18+).
 #define LIGHT_TASK_PRIORITY 1

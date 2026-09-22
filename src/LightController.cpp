@@ -1,8 +1,8 @@
 #include "LightController.h"
+#include <NightMare.h>
 static void (*onLightStateChangeCallback)(bool,float) = NULL;
 static int zeroPoint = -1;
 static bool last_state = false;
-static unsigned long last_update_time = 0;
 int getZeroPoint()
 {
     uint32_t Vsum = 0;
@@ -37,7 +37,7 @@ static void lightControllerTask(void *)
         // until the task watchdog fired.
         uint32_t wait = (elapsed >= SAMPLE_PERIOD_MS) ? 1 : (SAMPLE_PERIOD_MS - elapsed);
         TickType_t ticks = pdMS_TO_TICKS(wait);
-        bool is_ota_running = SystemSettings.getFlag("ota_running");
+        bool is_ota_running = SystemState.getFlag("ota_running");
         vTaskDelay(is_ota_running ? 5000 : (ticks ? ticks : 1));
     }
 }
@@ -103,7 +103,6 @@ void updateLightState()
     float rawRead = fastSensorRead();
     // Serial.printf("Light sensor reading: %.2f\n", rawRead);
     bool current_state = rawRead > ZMPT101B_ON_VOLTAGE_THRESHOLD;
-    last_update_time = now();
     if (current_state != last_state)
     {
         last_state = current_state;   

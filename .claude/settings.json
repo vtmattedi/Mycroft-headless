@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v -E 'node_modules|\\\\\\\\website\\\\\\\\|\\\\\\\\\\\\.pio' C:/Users/Vity1/.claude/projects/d--NightMareSystems-ESP32-Mycroft-headless/4f89ea2b-ec9a-468f-8174-9f3d86b18c9e/tool-results/bcivoyw50.txt)",
+      "Bash(grep -n -E '_device_name|configs.json|getDeviceName\\\\\\(\\\\\\)|adopt' __TRACKED_VAR__/src/Core/DeviceIdentity.cpp __TRACKED_VAR__/src/Core/StateStore.h)"
+    ]
+  }
+}

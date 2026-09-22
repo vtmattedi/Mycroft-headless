@@ -1,5 +1,5 @@
 #include "TempSensor.h"
-#include <NightmareNetwork.h>
+#include <NightMare.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
@@ -104,7 +104,7 @@ static void tempSensorTask(void *)
         uint32_t startMs = millis();
         // Sit out an OTA like the light task does. Every 1-Wire bit slot runs with interrupts
         // masked, and OTA is the only upload path this project has.
-        if (!SystemSettings.getFlag("ota_running"))
+        if (!SystemState.getFlag("ota_running"))
         {
             if (!sensorFound)
                 sensorFound = findSensor();
