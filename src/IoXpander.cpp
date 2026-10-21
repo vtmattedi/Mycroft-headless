@@ -1,6 +1,10 @@
 #include "IoXpander.h"
 #include <Core/Logs.h>
+#include <NightMare.h>
+#include <Door.h>
+#include <LightController.h>
 ioXpander IoXpander;
+ManagedState<int> IoXpanderState("ioxpander:state");
 
 /// Created here rather than lazily on first use: lazy creation would itself race if two tasks
 /// happened to call in simultaneously. Static constructors run after the ESP-IDF heap is up, so
@@ -9,6 +13,17 @@ ioXpander::ioXpander()
 {
     stateLock = xSemaphoreCreateRecursiveMutex();
 }
+
+bool writer(ioXpander *expander, byte value)
+{
+    expander->lockState();
+    expander->write_data = value;
+    expander->connected = expander->push();
+    bool res = expander->connected;
+    expander->unlockState();
+    return res;
+}
+
 
 void ioXpander::lockState()
 {
@@ -45,7 +60,13 @@ bool ioXpander::begin(int sclPin, int sdaPin, uint8_t address)
     initialized = connected;
     this->setAsInput(BUTTON_1_PIN);
     this->setAsInput(DOOR_SENSOR_PIN);
-
+    // onWrite is a plain function pointer, so it cannot capture; IoXpander is the only instance.
+    IoXpanderState.onWrite = [](ManagedState<int> &, const int &requested)
+    {
+        if (requested < 0 || requested > 255)
+            return false;
+        return writer(&IoXpander, (byte)requested);
+    };
     return connected;
 }
 
@@ -104,14 +125,10 @@ byte ioXpander::getCurrentData(bool update)
     return read_data;
 }
 
-bool ioXpander::write(byte value)
-{
-    lockState();
-    write_data = value;
-    connected = push();
-    bool res = connected;
-    unlockState();
-    return res;
+
+bool ioXpander::write(byte value, bool fromWriter)
+{   
+    return writer(this, value);
 }
 
 bool ioXpander::digitalWrite(uint8_t pin, bool value)
@@ -275,4 +292,33 @@ String ioXpander::getStateString()
 void ioXpander::printState(Print &out)
 {
     out.print(getStateString());
+}
+
+// ---- module -------------------------------------------------------------------------------------
+
+/// Poll period: the input latency, since the INT line is not wired.
+#define IOXPANDER_POLL_MS 1
+
+void ioXpanderOnChange(byte current, byte previous)
+{
+    lightOnButton(current, previous);
+    doorOnChange(current);
+}
+
+bool ioXpanderStart()
+{
+    IoXpander.onChange(ioXpanderOnChange);
+    const bool ok = IoXpander.begin();
+    if (!ok)
+        LOG_ERROR("IoXpander", "PCF8574 did not answer at 0x%02X", IOXPANDER_DEFAULT_ADDRESS);
+    return ok;
+}
+
+void ioXpanderTick()
+{
+    static uint32_t lastPollMs = 0;
+    if (millis() - lastPollMs < IOXPANDER_POLL_MS)
+        return;
+    lastPollMs = millis();
+    IoXpander.update();
 }

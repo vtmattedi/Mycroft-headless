@@ -1,5 +1,6 @@
 #include "TempSensor.h"
 #include <NightMare.h>
+#include <NightMare/Config.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
@@ -10,8 +11,14 @@ static DallasTemperature sensors(&oneWire);
 /// Task-private state: only the task touches these, so they need no lock.
 static DeviceAddress sensorAddress;
 static bool sensorFound = false;
-static uint8_t failures = 0;
+static uint32_t failures = 0;
 static TaskHandle_t tempTaskHandle = nullptr;
+
+static Config<uint32_t> readIntervalMs("temperature:read_interval_ms",
+                                       TEMP_READ_INTERVAL_MS);
+static Config<uint32_t> maxFailures("temperature:max_failures", TEMP_MAX_FAILURES);
+static ManagedSensor<float> temperature("temperature");
+
 
 /// What the getters hand out. Written only by the task, read from whichever task runs a command
 /// or a report; the lock stops a reader catching half an update. A spinlock rather than a mutex
@@ -56,7 +63,7 @@ static bool findSensor()
 /// back to searching the bus.
 static void recordFailure()
 {
-    if (++failures < TEMP_MAX_FAILURES)
+    if (++failures < maxFailures.value())
         return;
     Serial.println("TempSensor: sensor stopped responding");
     failures = 0;
@@ -68,6 +75,7 @@ static void recordFailure()
     sensorStatus.tempC = NAN;
     sensorStatus.address[0] = '\0';
     portEXIT_CRITICAL(&statusLock);
+    temperature.setValue(NAN);
 }
 
 static void readSensor()
@@ -104,20 +112,22 @@ static void tempSensorTask(void *)
         uint32_t startMs = millis();
         // Sit out an OTA like the light task does. Every 1-Wire bit slot runs with interrupts
         // masked, and OTA is the only upload path this project has.
-        if (!SystemState.getFlag("ota_running"))
+        if (!SystemState.get(SystemFlag::OtaRunning))
         {
             if (!sensorFound)
                 sensorFound = findSensor();
             if (sensorFound)
                 readSensor();
         }
+        temperature.setValue(sensorStatus.tempC);
         uint32_t elapsed = millis() - startMs;
-        uint32_t wait = (elapsed >= TEMP_READ_INTERVAL_MS) ? 1 : (TEMP_READ_INTERVAL_MS - elapsed);
+        const uint32_t interval = readIntervalMs.value();
+        uint32_t wait = (elapsed >= interval) ? 1 : (interval - elapsed);
         vTaskDelay(pdMS_TO_TICKS(wait));
     }
 }
 
-void setupTempSensor()
+void tempStart()
 {
     if (tempTaskHandle)
         return; // already running

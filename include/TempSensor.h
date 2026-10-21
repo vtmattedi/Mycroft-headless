@@ -37,7 +37,7 @@ struct TempSensorStatus
 
 /// @brief Starts the sampling task and returns immediately. The sensor is found and read on the
 /// task; a missing one is retried every TEMP_READ_INTERVAL_MS, so it can be plugged in later.
-void setupTempSensor();
+void tempStart();
 /// @brief Latest reading in Celsius, or NAN when there is none (not found yet, or lost).
 /// Never blocks: it returns what the task last read.
 float currentTemperature();

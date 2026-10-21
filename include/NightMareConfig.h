@@ -15,7 +15,10 @@
 #define NM_ENABLE_NETWORK 1
 #define NM_ENABLE_CONSOLE 1
 #define NM_ENABLE_WIFI 1
-#define NM_ENABLE_MQTT 1
+// ESP-NOW only: no MQTT client is compiled. The device talks to the Nightmare Gateway, which needs
+// WiFi up in STA mode on the gateway's channel (the WiFi service still provides that link).
+#define NM_ENABLE_MQTT 0
+#define NM_NETWORK_ESPNOW 1
 #define NM_ENABLE_TELEMETRY 1
 #define NM_ENABLE_SCHEDULER 1
 #define NM_ENABLE_JOBS 1

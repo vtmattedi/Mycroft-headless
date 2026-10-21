@@ -41,13 +41,11 @@ private:
     bool initialized = false;
     unsigned long lastUpdate = 0;
     TwoWire *wire = &Wire;
-    /// Output latch. 1 = released (weak pull-up, readable), 0 = driven low.
-    /// Starts at 0xFF so a fresh object never drives a pin low before begin() decides to.
-    byte write_data = 0xFF;
+
     /// Pin levels as of the last update(), which is not necessarily what was written.
     byte read_data = 0xFF;
     uint8_t address = IOXPANDER_DEFAULT_ADDRESS;
-    bool connected = false;
+
     ChangeCallback changeCb = nullptr;
     /// False until the first successful sample. The baseline read is not a change, so it must not
     /// fire the callback -- otherwise every boot reports a spurious event for each pin that
@@ -61,6 +59,12 @@ private:
     /// once silently lose one of the updates. Recursive because the public methods call each
     /// other (setAsInput -> digitalWrite, digitalRead(pin, true) -> update).
     SemaphoreHandle_t stateLock = nullptr;
+
+public:
+    /// Output latch. 1 = released (weak pull-up, readable), 0 = driven low.
+    /// Starts at 0xFF so a fresh object never drives a pin low before begin() decides to.
+    byte write_data = 0xFF;
+    bool connected = false;
     void lockState();
     void unlockState();
 
@@ -68,7 +72,6 @@ private:
     /// @return True if the device ACKed.
     bool push();
 
-public:
     ioXpander();
 
     /// @brief Starts the I2C bus and confirms the expander answers.
@@ -90,14 +93,14 @@ public:
     byte getCurrentData(bool update = false);
 
     /// @brief Replaces the whole output latch. Bits set to 0 are driven low.
-    bool write(byte value);
+    bool write(byte value, bool fromWriter = false);
 
     /// @brief Sets one pin of the latch. @param pin 0-7. @param value true = released, false = low.
     bool digitalWrite(uint8_t pin, bool value);
 
     /// @brief Reads one pin. @param pin 0-7. @param update True to sample first.
     bool digitalRead(uint8_t pin, bool update = false);
-    
+
     /// @brief Toggles the state of a pin. @param pin 0-7.
     bool togglePin(uint8_t pin);
 
@@ -147,3 +150,12 @@ public:
 };
 
 extern ioXpander IoXpander;
+
+/// @brief Brings the expander up and confirms it answers. Logs an error when it does not.
+bool ioXpanderStart();
+/// @brief Samples the port, at most once per IOXPANDER_POLL_MS. Call from loop().
+/// The expander's INT line is not wired, so it is polled.
+void ioXpanderTick();
+/// @brief Fans a sampled change out to the modules that care. Runs inside the sample, so keep it
+/// short (see ioXpander::onChange).
+void ioXpanderOnChange(byte current, byte previous);
