@@ -9,7 +9,6 @@ static Config<uint32_t> samplePeriodMs("light:sample_period_ms", SAMPLE_PERIOD_M
 static Config<uint32_t> settleMs("light:settle_ms", LIGHT_SETTLE_MS);
 
 static ManagedState<bool> light("light");
-static ManagedAction toggleLight("toggle_light");
 
 static TaskHandle_t lightTaskHandle = nullptr;
 static int zeroPoint = -1;
@@ -39,16 +38,6 @@ static bool lightOnWrite(ManagedState<bool> &, const bool &requested)
     holdStartMs = millis();
     holdActive = true;
     return true;
-}
-
-static ActionResult lightOnToggle(ManagedAction &, const String &payload)
-{
-    if (payload.length() != 0)
-        return {false, "toggle_light takes no arguments"};
-    if (!lightToggle())
-        return {false, "IO expander did not respond"};
-    // No setValue: the light resource follows the measurement.
-    return {true, "OK"};
 }
 
 void lightOnButton(byte current, byte previous)
@@ -143,7 +132,6 @@ void lightStart()
     Serial.printf("Zero point: %d\n", zeroPoint);
 
     light.onWrite = lightOnWrite;
-    toggleLight.onInvoke = lightOnToggle;
 
 #if defined(CONFIG_FREERTOS_UNICORE) || (portNUM_PROCESSORS == 1)
     // C3 SuperMini: one core, so everything shares it. The task still helps -- the busy-wait
